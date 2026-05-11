@@ -173,8 +173,11 @@ class PriceRepository extends ServiceEntityRepository
         $q = $this->getFindBaseQuery($reservation)
                 /* select only room type */
             ->andWhere('p.type = 2')
-                /* make sure that all room specific fields match */
-            ->andWhere('p.roomCategory = :rc AND p.numberOfPersons = :nop AND p.minStay <= :ms')
+                /* make sure that all room specific fields match;
+                 * a NULL numberOfPersons is treated as a wildcard so a single
+                 * price row can apply to any occupancy without duplicating it
+                 * per persons-count. */
+            ->andWhere('p.roomCategory = :rc AND (p.numberOfPersons = :nop OR p.numberOfPersons IS NULL) AND p.minStay <= :ms')
             ->addOrderBy('p.minStay', 'DESC')
             ->setParameter('rc', $reservation->getAppartment()->getRoomCategory())
             ->setParameter('nop', $reservation->getPersons())
