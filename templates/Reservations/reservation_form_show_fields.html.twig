@@ -170,6 +170,16 @@
                 </div>
             </div>
         </div>
+        {% if attribute(reservations, 0).directBookingRequested|default(false) %}
+        <div class="row mt-4">
+            <div class="col-sm-9 offset-sm-3">
+                <div class="alert alert-info py-2 mb-0">
+                    <i class="fas fa-info-circle me-2"></i>{{ 'reservation.direct_booking_requested_yes'|trans }}
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
         <div class="row mt-4">
             <div class="col-sm-3">
                 <label for="reservation-remark">{{ 'customer.remark'|trans }}</label>

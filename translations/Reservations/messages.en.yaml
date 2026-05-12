@@ -42,6 +42,7 @@ reservation.no.selected.appartments: No reservation selected.
 reservation.objects.all: All branches
 reservation.option: Option
 reservation.origin: Origin
+reservation.direct_booking_requested_yes: "Guest requested a binding direct booking."
 reservation.person: Person
 reservation.persons: Persons
 reservation.preview.appartments.selected: Selected room

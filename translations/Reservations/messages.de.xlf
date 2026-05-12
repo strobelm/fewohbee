@@ -170,6 +170,10 @@
                 <source>reservation.origin</source>
                 <target>Herkunft</target>
             </trans-unit>
+            <trans-unit id="reservation.direct_booking_requested_yes">
+                <source>reservation.direct_booking_requested_yes</source>
+                <target>Gast möchte verbindlich buchen.</target>
+            </trans-unit>
             <trans-unit id="reservation.new.reservation.appartments.addmore">
                 <source>reservation.new.reservation.appartments.addmore</source>
                 <target>Zimmer der Reservierung hinzufügen</target>
