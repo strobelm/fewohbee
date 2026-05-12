@@ -65,6 +65,13 @@ class OnlineBookingConfigType extends AbstractType
                     'online_booking.option.booking' => OnlineBookingConfig::BOOKING_MODE_BOOKING,
                 ],
             ])
+            ->add('directBookingRequestEnabled', CheckboxType::class, [
+                'required' => false,
+                'label' => 'online_booking.settings.direct_booking_request_enabled',
+                'help' => 'online_booking.settings.direct_booking_request_enabled_help',
+                'help_html' => true,
+                'label_attr' => ['class' => 'checkbox-switch'],
+            ])
             ->add('subsidiariesMode', ChoiceType::class, [
                 'label' => 'online_booking.settings.subsidiaries_mode',
                 'expanded' => true,

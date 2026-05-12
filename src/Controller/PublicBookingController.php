@@ -72,6 +72,7 @@ class PublicBookingController extends AbstractController
                 'city' => (string) $request->request->get('city', ''),
                 'country' => mb_strtoupper((string) $request->request->get('country', $defaultCountry)),
                 'comment' => (string) $request->request->get('comment', ''),
+                'directBookingRequested' => '1' === (string) $request->request->get('directBookingRequested', ''),
             ],
             'roomTotalFormatted' => null,
             'roomPriceBreakdown' => [],
@@ -315,6 +316,7 @@ class PublicBookingController extends AbstractController
             'city' => (string) $request->request->get('city', ''),
             'country' => mb_strtoupper((string) $request->request->get('country', $defaultCountry)),
             'comment' => (string) $request->request->get('comment', ''),
+            'directBookingRequested' => '1' === (string) $request->request->get('directBookingRequested', ''),
         ];
     }
 }

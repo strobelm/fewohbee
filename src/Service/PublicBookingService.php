@@ -140,6 +140,11 @@ class PublicBookingService
         );
         $publicComment = self::sanitize($booker['comment'] ?? '', 2000);
 
+        // In BOOKING mode every submission is already a binding booking, so the flag is forced off there.
+        $directBookingRequested = $config->isDirectBookingRequestEnabled()
+            && OnlineBookingConfig::BOOKING_MODE_INQUIRY === $config->getBookingMode()
+            && !empty($booker['directBookingRequested']);
+
         $bookingGroupUuid = Uuid::v4();
         foreach ($reservations as $resIndex => $reservation) {
             $reservation->setReservationOrigin($origin);
@@ -147,6 +152,7 @@ class PublicBookingService
             $reservation->setBooker($customer);
             $reservation->setUuid(Uuid::v4());
             $reservation->setBookingGroupUuid($bookingGroupUuid);
+            $reservation->setDirectBookingRequested($directBookingRequested);
             if ('' !== $publicComment) {
                 $reservation->setRemark($publicComment);
             }

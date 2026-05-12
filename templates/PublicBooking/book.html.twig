@@ -340,6 +340,20 @@
                                     </div>
                                 </div>
 
+                                {% if config.directBookingRequestEnabled and config.bookingMode == 'INQUIRY' %}
+                                    <div class="row g-2 mt-1">
+                                        <div class="col-12">
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" id="direct-booking-requested" name="directBookingRequested" value="1"
+                                                       {% if booker.directBookingRequested|default(false) %}checked{% endif %}>
+                                                <label class="form-check-label small" for="direct-booking-requested">
+                                                    {{ 'online_booking.public.direct_booking_requested'|trans }}
+                                                </label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                {% endif %}
+
                                 {# ── Summary ── #}
                                 <div class="fhb-booking-summary mt-3">
                                     <div class="small text-body-secondary mb-1">{{ 'online_booking.public.summary_title'|trans }}</div>
