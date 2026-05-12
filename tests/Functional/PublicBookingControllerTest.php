@@ -175,6 +175,152 @@ final class PublicBookingControllerTest extends WebTestCase
         self::assertStringNotContainsString('<form method="post"', $content);
     }
 
+    /** Direct-booking checkbox renders in step 3 when the operator enabled the toggle and the widget is in INQUIRY mode. */
+    public function testDirectBookingCheckboxRendersWhenEnabledAndInquiryMode(): void
+    {
+        $content = $this->renderStep3WithConfig(static function (OnlineBookingConfig $config): void {
+            $config->setBookingMode(OnlineBookingConfig::BOOKING_MODE_INQUIRY);
+            $config->setDirectBookingRequestEnabled(true);
+        });
+
+        self::assertStringContainsString('name="directBookingRequested"', $content);
+        self::assertStringContainsString('id="direct-booking-requested"', $content);
+    }
+
+    /** Direct-booking checkbox is hidden when the operator has not enabled the toggle. */
+    public function testDirectBookingCheckboxHiddenWhenFeatureDisabled(): void
+    {
+        $content = $this->renderStep3WithConfig(static function (OnlineBookingConfig $config): void {
+            $config->setBookingMode(OnlineBookingConfig::BOOKING_MODE_INQUIRY);
+            $config->setDirectBookingRequestEnabled(false);
+        });
+
+        self::assertStringNotContainsString('name="directBookingRequested"', $content);
+    }
+
+    /** Direct-booking checkbox is hidden in BOOKING mode (every submission is already binding there). */
+    public function testDirectBookingCheckboxHiddenInBookingMode(): void
+    {
+        $content = $this->renderStep3WithConfig(static function (OnlineBookingConfig $config): void {
+            $config->setBookingMode(OnlineBookingConfig::BOOKING_MODE_BOOKING);
+            $config->setDirectBookingRequestEnabled(true);
+        });
+
+        self::assertStringNotContainsString('name="directBookingRequested"', $content);
+    }
+
+    /** Submit flow forwards the directBookingRequested POST field into the booker payload passed to createBooking. */
+    public function testSubmitForwardsDirectBookingRequestedToService(): void
+    {
+        $client = self::createClient();
+        $client->disableReboot();
+        $config = $this->createEnabledConfig();
+        $config->setDirectBookingRequestEnabled(true);
+
+        $capturedBooker = null;
+        $publicBookingService = $this->createMock(PublicBookingService::class);
+        $publicBookingService->method('validateEnabledConfig')->willReturn(null);
+        $publicBookingService->expects(self::once())
+            ->method('createBooking')
+            ->willReturnCallback(function (
+                \DateTimeImmutable $dateFrom,
+                \DateTimeImmutable $dateTo,
+                int $persons,
+                int $roomsCount,
+                array $occupancySelection,
+                array $booker
+            ) use (&$capturedBooker): array {
+                $capturedBooker = $booker;
+
+                return [
+                    'reservations' => [],
+                    'bookingGroupUuid' => Uuid::v4(),
+                    'roomTotal' => 0.0,
+                    'roomTotalFormatted' => '0,00',
+                    'roomPriceBreakdown' => [],
+                ];
+            });
+
+        $this->overrideBookingServices($publicBookingService, $config, $this->createNoopAbuseProtectionService());
+
+        $client->followRedirects(false);
+        $client->request('POST', '/book', [
+            'intent' => 'submit',
+            'dateFrom' => '2099-05-10',
+            'dateTo' => '2099-05-12',
+            'persons' => 1,
+            'roomsCount' => 1,
+            'qty_category:1' => 1,
+            'salutation' => 'Mr',
+            'firstname' => 'Max',
+            'lastname' => 'Mustermann',
+            'email' => 'max@example.com',
+            'address' => 'Musterstrasse 1',
+            'zip' => '12345',
+            'city' => 'Berlin',
+            'country' => 'Deutschland',
+            'directBookingRequested' => '1',
+        ]);
+
+        self::assertResponseRedirects();
+        self::assertIsArray($capturedBooker);
+        self::assertTrue($capturedBooker['directBookingRequested'] ?? null);
+    }
+
+    /** Drive the controller into the step-3 render path with a given config, so we can assert booker-form HTML. */
+    private function renderStep3WithConfig(callable $configure): string
+    {
+        $client = self::createClient();
+        $config = $this->createEnabledConfig();
+        $configure($config);
+
+        $availability = [[
+            'typeKey' => 'category:1',
+            'typeLabel' => 'Einzelzimmer',
+            'typeDescription' => '',
+            'maxGuests' => 1,
+            'availableCount' => 1,
+            'roomIds' => [11],
+            'subsidiaryIds' => [1],
+            'occupancyOptions' => [['persons' => 1, 'totalPrice' => 80.0, 'totalPriceFormatted' => '80,00 €']],
+        ]];
+
+        $publicBookingService = $this->createStub(PublicBookingService::class);
+        $publicBookingService->method('validateEnabledConfig')->willReturn(null);
+        $publicBookingService->method('buildSelectionPreview')->willReturn([
+            'availability' => $availability,
+            'selected' => ['category:1' => 1],
+            'roomTotal' => 80.0,
+            'roomTotalFormatted' => '80,00',
+            'roomPriceBreakdown' => [],
+            'roomReservations' => [],
+        ]);
+        $publicBookingService->method('createBooking')
+            ->willThrowException(new PublicBookingException('online_booking.error.booker_required'));
+
+        $this->overrideBookingServices($publicBookingService, $config, $this->createNoopAbuseProtectionService());
+
+        $client->request('POST', '/book', [
+            'intent' => 'submit',
+            'dateFrom' => '2099-05-10',
+            'dateTo' => '2099-05-12',
+            'persons' => 1,
+            'roomsCount' => 1,
+            'qty_category:1' => 1,
+            'firstname' => 'Max',
+            'lastname' => 'Mustermann',
+            'email' => 'max@example.com',
+            'address' => 'Musterstrasse 1',
+            'zip' => '12345',
+            'city' => 'Berlin',
+            'country' => 'Deutschland',
+        ]);
+
+        self::assertResponseIsSuccessful();
+
+        return (string) $client->getResponse()->getContent();
+    }
+
     /** Create a persisted template of the given type for settings form option assertions. */
     private function createTemplate(string $typeName, string $name): Template
     {
