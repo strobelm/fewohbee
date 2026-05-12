@@ -78,6 +78,9 @@ class Reservation
     #[ORM\Column(type: Types::TIME_MUTABLE, nullable: true)]
     private ?\DateTime $departureTime = null;
 
+    #[ORM\Column(type: 'boolean')]
+    private bool $directBookingRequested = false;
+
     public function __construct()
     {
         $this->reservationDate = new \DateTime('now');
@@ -485,6 +488,18 @@ class Reservation
     public function setDepartureTime(?\DateTime $departureTime): static
     {
         $this->departureTime = $departureTime;
+
+        return $this;
+    }
+
+    public function isDirectBookingRequested(): bool
+    {
+        return $this->directBookingRequested;
+    }
+
+    public function setDirectBookingRequested(bool $directBookingRequested): self
+    {
+        $this->directBookingRequested = $directBookingRequested;
 
         return $this;
     }

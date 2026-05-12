@@ -34,6 +34,9 @@ class OnlineBookingConfig
     #[ORM\Column(type: Types::STRING, length: 20, options: ['default' => self::BOOKING_MODE_INQUIRY])]
     private string $bookingMode = self::BOOKING_MODE_INQUIRY;
 
+    #[ORM\Column(type: Types::BOOLEAN, options: ['default' => false])]
+    private bool $directBookingRequestEnabled = false;
+
     #[ORM\Column(type: Types::STRING, length: 20, options: ['default' => self::SUBSIDIARIES_MODE_ALL])]
     private string $subsidiariesMode = self::SUBSIDIARIES_MODE_ALL;
 
@@ -123,6 +126,18 @@ class OnlineBookingConfig
     public function setBookingMode(string $bookingMode): self
     {
         $this->bookingMode = $bookingMode;
+
+        return $this;
+    }
+
+    public function isDirectBookingRequestEnabled(): bool
+    {
+        return $this->directBookingRequestEnabled;
+    }
+
+    public function setDirectBookingRequestEnabled(bool $directBookingRequestEnabled): self
+    {
+        $this->directBookingRequestEnabled = $directBookingRequestEnabled;
 
         return $this;
     }
