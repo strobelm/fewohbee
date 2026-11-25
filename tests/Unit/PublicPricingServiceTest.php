@@ -20,10 +20,14 @@ use PHPUnit\Framework\TestCase;
 
 final class PublicPricingServiceTest extends TestCase
 {
-    private function createService(InvoiceService $invoiceService, OnlineBookingConfigService $configService): PublicPricingService
-    {
-        $priceService = $this->createStub(PriceService::class);
-        $priceRepo = $this->createStub(PriceRepository::class);
+    private function createService(
+        InvoiceService $invoiceService,
+        OnlineBookingConfigService $configService,
+        ?PriceService $priceService = null,
+        ?PriceRepository $priceRepo = null,
+    ): PublicPricingService {
+        $priceService ??= $this->createStub(PriceService::class);
+        $priceRepo ??= $this->createStub(PriceRepository::class);
 
         return new PublicPricingService(
             $invoiceService,
@@ -186,6 +190,76 @@ final class PublicPricingServiceTest extends TestCase
         self::assertSame(100.0, $options[1]['totalPrice']);
         self::assertSame(200.0, $options[2]['totalPrice']);
         self::assertSame(300.0, $options[3]['totalPrice']);
+    }
+
+    /** Mandatory extras are in the card price; optional and once-per-booking ones are not. */
+    public function testGetOccupancyPricesIncludesMandatoryRoomExtras(): void
+    {
+        $category = new RoomCategory();
+        $room = new Appartment();
+        $room->setBedsMax(2);
+        $room->setRoomCategory($category);
+
+        $invoiceService = $this->createStub(InvoiceService::class);
+        $invoiceService->method('buildAppartmentPositions')
+            ->willReturnCallback(function (\App\Entity\Reservation $r): array {
+                $position = $this->createStub(InvoiceAppartment::class);
+                $position->method('getIsFlatPrice')->willReturn(false);
+                $position->method('getAmount')->willReturn(2 * $r->getPersons()); // 2 nights × persons
+                $position->method('getPrice')->willReturn(42.0);
+                $position->method('getVat')->willReturn(7.0);
+                $position->method('getIncludesVat')->willReturn(true);
+
+                return [$position];
+            });
+        $invoiceService->method('calculateSums')
+            ->willReturnCallback(function ($apps, $poss, array &$vats, float &$brutto, float &$netto, float &$appartmentTotal, float &$miscTotal): void {
+                $appartmentTotal = 0.0;
+                foreach ($apps as $app) {
+                    $appartmentTotal += $app->getAmount() * $app->getPrice();
+                }
+            });
+
+        $breakfast = $this->extra('Breakfast', 8.0, mandatory: true, category: $category);
+        $optional = $this->extra('Parking', 5.0, mandatory: false, category: $category);
+        $cleaning = $this->extra('Cleaning fee', 30.0, mandatory: true, flat: true);
+
+        $priceRepo = $this->createStub(PriceRepository::class);
+        $priceRepo->method('findBookableOnlineExtras')->willReturn([$breakfast, $optional, $cleaning]);
+        $priceService = $this->createStub(PriceService::class);
+        $priceService->method('getPricesForReservationDays')->willReturn([1 => true, 2 => true]);
+
+        $configService = $this->createStub(OnlineBookingConfigService::class);
+        $configService->method('getReservationOrigin')->willReturn(new \App\Entity\ReservationOrigin());
+
+        $service = $this->createService($invoiceService, $configService, $priceService, $priceRepo);
+        $options = $service->getOccupancyPrices(
+            $category,
+            $room,
+            new \DateTimeImmutable('2026-06-01'),
+            new \DateTimeImmutable('2026-06-03'),
+            2,
+        );
+
+        self::assertSame(100.0, $options[1]['totalPrice']);
+        self::assertSame(200.0, $options[2]['totalPrice']);
+        self::assertSame('200,00', $options[2]['totalPriceFormatted']);
+        self::assertSame(['Breakfast'], $options[2]['includedExtras']);
+    }
+
+    private function extra(string $description, float $amount, bool $mandatory, ?RoomCategory $category = null, bool $flat = false): Price
+    {
+        $price = new Price();
+        $price->setDescription($description);
+        $price->setPrice($amount);
+        $price->setIsBookableOnline(true);
+        $price->setIsMandatoryOnline($mandatory);
+        $price->setIsFlatPrice($flat);
+        if (null !== $category) {
+            $price->addRoomCategory($category);
+        }
+
+        return $price;
     }
 
     /** When no occupancy level has a price, an empty array is returned. */

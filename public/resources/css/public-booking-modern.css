@@ -673,6 +673,12 @@
 
 /* ── Tooltip ───────────────────────────────────────────────────────────── */
 
+.fhb-room-includes {
+    color: var(--fhb-text-muted);
+    font-size: 0.875rem;
+    margin-bottom: 0.5rem;
+}
+
 .fhb-room-adjustment {
     align-items: center;
     color: var(--fhb-text-muted);
