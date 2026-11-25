@@ -251,6 +251,10 @@
                                                     {{ ('online_booking.public.price_adjustment.short.' ~ row.priceAdjustment.direction)|trans }}
                                                 </div>
                                             {% endif %}
+                                            {% set includedExtras = (row.occupancyOptions|first).includedExtras|default([]) %}
+                                            {% if includedExtras is not empty %}
+                                                <div class="small text-body-secondary mb-1">{{ 'online_booking.public.price_includes'|trans({'%extras%': includedExtras|join(', ')}) }}</div>
+                                            {% endif %}
                                             {# Row that carries the "+ baby"-icons: the option matching the party's
                                                occupancy-counted total, or the largest priced option when that exact
                                                count has no price category (options are capped at the searched

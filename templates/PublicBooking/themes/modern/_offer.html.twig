@@ -70,6 +70,11 @@
                             </div>
                         {% endif %}
 
+                        {% set includedExtras = (row.occupancyOptions|first).includedExtras|default([]) %}
+                        {% if includedExtras is not empty %}
+                            <div class="fhb-room-includes">{{ 'online_booking.public.price_includes'|trans({'%extras%': includedExtras|join(', ')}) }}</div>
+                        {% endif %}
+
                         {% if row.images is defined and row.images|length > 1 %}
                             <a href="#" class="fhb-gallery-link" data-bs-toggle="modal" data-bs-target="#{{ galleryId }}">
                                 {{ 'online_booking.public.view_photos'|trans({'%count%': row.images|length}) }}

@@ -58,11 +58,14 @@ class PublicPricingService
      * pending adjustment instead (see {@see describeGuestPriceAdjustment()}) and shows
      * the concrete amount as its own line in the summary.
      *
+     * Mandatory online extras (e.g. breakfast) are included, except global flat or
+     * per-room ones, which are charged once per booking.
+     *
      * Tourist tax is intentionally **not** applied here — it is shown as a separate line at
      * the end of the booking flow, not bundled into the room rate.
      * Results are indexed by person count and exclude options without a price.
      *
-     * @return array<int, array{persons: int, totalPrice: float, totalPriceFormatted: string}>
+     * @return array<int, array{persons: int, totalPrice: float, totalPriceFormatted: string, includedExtras: list<string>}>
      */
     public function getOccupancyPrices(
         // Not used for the calculation — kept so callers stay explicit about the
@@ -75,6 +78,7 @@ class PublicPricingService
     ): array {
         $origin = $this->configService->getReservationOrigin();
         $options = [];
+        $mandatoryExtras = null;
 
         for ($persons = 1; $persons <= $maxGuests; ++$persons) {
             $reservation = $this->buildSampleReservation($sampleRoom, $persons, $dateFrom, $dateTo, $origin);
@@ -84,14 +88,60 @@ class PublicPricingService
                 continue;
             }
 
+            $mandatoryExtras ??= $this->mandatoryRoomExtras($reservation, $dateFrom, $dateTo);
+            $total = $singleTotal;
+            foreach ($mandatoryExtras as $extra) {
+                [, $perUnit] = $this->unitPricing($extra['price'], $extra['unitPrice'], $extra['validDays'], $persons);
+                $total += $perUnit;
+            }
+
             $options[$persons] = [
                 'persons' => $persons,
-                'totalPrice' => $singleTotal,
-                'totalPriceFormatted' => $this->money($singleTotal),
+                'totalPrice' => $total,
+                'totalPriceFormatted' => $this->money($total),
+                'includedExtras' => array_column($mandatoryExtras, 'description'),
             ];
         }
 
         return $options;
+    }
+
+    /**
+     * @return list<array{price: Price, unitPrice: float, validDays: int, description: string}>
+     */
+    private function mandatoryRoomExtras(Reservation $reservation, \DateTimeImmutable $dateFrom, \DateTimeImmutable $dateTo): array
+    {
+        if (null === $reservation->getReservationOrigin()) {
+            return [];
+        }
+
+        $nights = max(1, (int) $dateFrom->diff($dateTo)->days);
+        $extras = [];
+        foreach ($this->priceRepository->findBookableOnlineExtras($reservation) as $price) {
+            if (!$price->getIsMandatoryOnline()) {
+                continue;
+            }
+            if ($price->getRoomCategories()->isEmpty() && ($price->getIsFlatPrice() || $price->getIsPerRoom())) {
+                continue;
+            }
+            $validDays = $this->countValidDays($reservation, $price, $nights);
+            if (0 === $validDays && !$price->getIsFlatPrice()) {
+                continue;
+            }
+            $unitPrice = (float) $price->getPrice();
+            if (0.0 === $unitPrice) {
+                continue;
+            }
+
+            $extras[] = [
+                'price' => $price,
+                'unitPrice' => $unitPrice,
+                'validDays' => $validDays,
+                'description' => (string) ($this->contentTranslator?->text($price, 'description') ?? $price->getDescription()),
+            ];
+        }
+
+        return $extras;
     }
 
     /**
