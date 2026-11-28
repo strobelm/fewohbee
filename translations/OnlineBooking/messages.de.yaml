@@ -207,6 +207,7 @@ online_booking:
     decrease: "Verringern"
     calendar:
       title: "Verfügbarkeit"
+      title_dates: "Reisezeitraum"
       room_label: "Unterkunft"
       legend_free: "frei"
       legend_busy: "belegt"
@@ -226,6 +227,7 @@ online_booking:
       up_to_guests: "{1} bis %count% Gast|]1,Inf] bis %count% Gäste"
     guest_singular: "Gast"
     guest_plural: "Gäste"
+    price_includes: "Preise inkl. %extras%"
     selection:
       hint: "{1} Wählen Sie mit „+“ das gewünschte Zimmer aus.|]1,Inf] Wählen Sie mit „+“ insgesamt %count% Zimmer aus."
       preselected: "Die zu Ihrer Suche passende Auswahl ist bereits eingetragen. Mit „+“ und „−“ können Sie sie ändern."
